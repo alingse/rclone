@@ -17,6 +17,7 @@ import (
 	"github.com/rclone/rclone/cmd/serve"
 	"github.com/rclone/rclone/fs"
 	"github.com/rclone/rclone/fs/config/flags"
+	"github.com/rclone/rclone/fs/rc"
 	"github.com/rclone/rclone/vfs"
 	"github.com/rclone/rclone/vfs/vfscommon"
 	"github.com/rclone/rclone/vfs/vfsflags"
@@ -85,6 +86,23 @@ func init() {
 	vfsflags.AddFlags(Command.Flags())
 	AddFlags(Command.Flags())
 	serve.Command.AddCommand(Command)
+	serve.AddRc("nfs", func(ctx context.Context, f fs.Fs, in rc.Params) (serve.Handle, error) {
+		// Create VFS
+		var vfsOpt = vfscommon.Opt // set default opts
+		err := in.GetStructMissingOK("vfsOpt", &vfsOpt)
+		if err != nil {
+			return nil, err
+		}
+		VFS := vfs.New(f, &vfsOpt)
+		// Read opts
+		var opt = Opt // set default opts
+		err = in.GetStructMissingOK("opt", &opt)
+		if err != nil {
+			return nil, err
+		}
+		// Create server
+		return NewServer(ctx, VFS, &opt)
+	})
 }
 
 // Run the command
